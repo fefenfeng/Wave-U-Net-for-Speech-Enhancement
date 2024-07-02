@@ -4,6 +4,7 @@ import torch.nn.functional as F
 
 
 class DownSamplingLayer(nn.Module):
+    
     def __init__(self, channel_in, channel_out, dilation=1, kernel_size=15, stride=1, padding=7):
         super(DownSamplingLayer, self).__init__()
         self.main = nn.Sequential(

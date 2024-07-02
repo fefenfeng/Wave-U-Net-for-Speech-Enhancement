@@ -63,9 +63,12 @@ def initialize_config(module_cfg, pass_args=True):
     1. Load the module corresponding to the "module" param.
     2. Call function (or instantiate class) corresponding to the "main" param.
     3. Send the param (in "args") into the function (or class) when calling ( or instantiating)
+    这样就可以动态地读取config里，先指定module模块，然后模块中的主要类，args决定传入的参数
     """
     module = importlib.import_module(module_cfg["module"])
+    # import lib允许再运行时导入模块，而不是再代码编写时静态导入
 
+    # getattr从模块中获取指定的属性，main获取Dataset类，args赋值
     if pass_args:
         return getattr(module, module_cfg["main"])(**module_cfg["args"])
     else:

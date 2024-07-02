@@ -1,6 +1,6 @@
 {
     "seed": 0,
-    "description": "...des",
+    "description": "这里写tensorboard的每个实验的描述",
     "root_dir": "~/Experiments/Wave-U-Net",
     "cudnn_deterministic": false,
     "trainer": {
