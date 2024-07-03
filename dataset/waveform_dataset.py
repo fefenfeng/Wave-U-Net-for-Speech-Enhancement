@@ -37,9 +37,12 @@ class Dataset(data.Dataset):
             (mixture signals, clean signals, filename)
         """
         super(Dataset, self).__init__()
+        # 换行号分割读取wav文件地址
+        # 这里expanduser可以将~符号替换为当前用户主目录，abspath将相对路径改为绝对路径
         dataset_list = [line.rstrip('\n') for line in open(os.path.abspath(os.path.expanduser(dataset)), "r")]
 
         dataset_list = dataset_list[offset:]
+        # limit只读txt前limit个
         if limit:
             dataset_list = dataset_list[:limit]
 
@@ -62,6 +65,7 @@ class Dataset(data.Dataset):
         if self.mode == "train":
             # The input of model should be fixed-length in the training.
             mixture, clean = sample_fixed_length_data_aligned(mixture, clean, self.sample_length)
+            # reshape(1, -1) 将16384长一位音频数据改为[1, 16384]
             return mixture.reshape(1, -1), clean.reshape(1, -1), filename
         else:
             return mixture.reshape(1, -1), clean.reshape(1, -1), filename

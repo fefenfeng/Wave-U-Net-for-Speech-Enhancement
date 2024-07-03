@@ -108,7 +108,7 @@ def sample_fixed_length_data_aligned(data_a, data_b, sample_length):
     assert len(data_a) >= sample_length, f"len(data_a) is {len(data_a)}, sample_length is {sample_length}."
 
     frames_total = len(data_a)
-
+    # 随机生成下界
     start = np.random.randint(frames_total - sample_length + 1)
     # print(f"Random crop from: {start}")
     end = start + sample_length
