@@ -34,7 +34,7 @@ def prepare_empty_dir(dirs, resume=False):
         if resume:
             assert dir_path.exists()
         else:
-            dir_path.mkdir(parents=True, exist_ok=True)
+            dir_path.mkdir(parents=True, exist_ok=True)  # parents = true建立必要父目录, exist_ok = True让即使目录存在也不抛出异常
 
 
 class ExecutionTime:

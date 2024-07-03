@@ -4,9 +4,12 @@ from pathlib import Path
 import json5
 import numpy as np
 import torch
+import torch.backends.cudnn as cudnn
+
 from torch.optim.lr_scheduler import StepLR
 from util import visualization
 from util.utils import prepare_empty_dir, ExecutionTime
+
 
 class BaseTrainer:
     def __init__(self,
@@ -15,64 +18,80 @@ class BaseTrainer:
                  model,
                  loss_function,
                  optimizer):
+
         self.n_gpu = torch.cuda.device_count()
+        # 保证实验重复性可以将config里的deterministic改下
         self.device = self._prepare_device(self.n_gpu, cudnn_deterministic=config["cudnn_deterministic"])
 
+        # optimizer and loss_function
         self.optimizer = optimizer
         self.loss_function = loss_function
 
         self.model = model.to(self.device)
 
+        # parallel
         if self.n_gpu > 1:
             self.model = torch.nn.DataParallel(self.model, device_ids=list(range(self.n_gpu)))
 
-        # Trainer
+        # config中的trainer参数传递
         self.epochs = config["trainer"]["epochs"]
-        self.save_checkpoint_interval = config["trainer"]["save_checkpoint_interval"]
-        self.validation_config = config["trainer"]["validation"]
-        self.validation_interval = self.validation_config["interval"]
-        self.find_max = self.validation_config["find_max"]
+        self.save_checkpoint_interval = config["trainer"]["save_checkpoint_interval"]  # save model breakpoint interval
+        self.validation_config = config["trainer"]["validation"]  # validation_config
+        self.validation_interval = self.validation_config["interval"]  # validation interval
+        self.find_max = self.validation_config["find_max"]  # 为true时，记metrics最大checkpoint
+        # 包含可视化audio, waveform, spectrogram 的间隔，以及sample_length
         self.validation_custom_config = self.validation_config["custom"]
 
         # The following args is not in the config file. We will update it if the resume is True in later.
         self.start_epoch = 1
         self.best_score = -np.inf if self.find_max else np.inf
+
         self.root_dir = Path(config["root_dir"]).expanduser().absolute() / config["experiment_name"]
         self.checkpoints_dir = self.root_dir / "checkpoints"
         self.logs_dir = self.root_dir / "logs"
+
         prepare_empty_dir([self.checkpoints_dir, self.logs_dir], resume=resume)
 
-        self.writer = visualization.writer(self.logs_dir.as_posix())
+        self.writer = visualization.writer(self.logs_dir.as_posix())  # as_posix将\改为/
         self.writer.add_text(
             tag="Configuration",
+            # json5.dumps用于转换config到字符串，indent指定缩进级别，sort_keys是否排序
             text_string=f"<pre>  \n{json5.dumps(config, indent=4, sort_keys=False)}  \n</pre>",
             global_step=1
         )
 
-        if resume: self._resume_checkpoint()
+        # 如果resume为真，调用_resume_checkpoint方法从最新checkpoint恢复训练状态
+        if resume:
+            self._resume_checkpoint()
 
         print("Configurations are as follows: ")
-        print(json5.dumps(config, indent=2, sort_keys=False))
+        print(json5.dumps(config, indent=2, sort_keys=False))  # 这是再把config打印一次
 
+        # 将配置config保存到一个带时间戳的json文件中
         with open((self.root_dir / f"{time.strftime('%Y-%m-%d-%H-%M-%S')}.json").as_posix(), "w") as handle:
             json5.dump(config, handle, indent=2, sort_keys=False)
 
-        self._print_networks([self.model])
+        self._print_networks([self.model])  # 打印模型架构
 
     def _resume_checkpoint(self):
-        """Resume experiment from the latest checkpoint.
+        """
+        Resume experiment from the latest checkpoint.
+        恢复的状态包含模型参数、训练器状态、当前epoch和最佳metric
         Notes:
             To be careful at the loading. if the model is an instance of DataParallel, we need to set model.module.*
         """
         latest_model_path = self.checkpoints_dir.expanduser().absolute() / "latest_model.tar"
         assert latest_model_path.exists(), f"{latest_model_path} does not exist, can not load latest checkpoint."
-
+        # 加载checkpoint，并映射到当前device
         checkpoint = torch.load(latest_model_path.as_posix(), map_location=self.device)
-
+        # 恢复epoch和best_score
         self.start_epoch = checkpoint["epoch"] + 1
         self.best_score = checkpoint["best_score"]
+
+        # 恢复optimizer的state
         self.optimizer.load_state_dict(checkpoint["optimizer"])
 
+        # 如果并行要用model.module重载
         if isinstance(self.model, torch.nn.DataParallel):
             self.model.module.load_state_dict(checkpoint["model"])
         else:
@@ -96,9 +115,9 @@ class BaseTrainer:
         state_dict = {
             "epoch": epoch,
             "best_score": self.best_score,
-            "optimizer": self.optimizer.state_dict()
+            "optimizer": self.optimizer.state_dict()  # optimizer state_dict
         }
-
+        # 并行用model.module获取实际参数
         if isinstance(self.model, torch.nn.DataParallel):  # Parallel
             state_dict["model"] = self.model.module.cpu().state_dict()
         else:
@@ -113,7 +132,9 @@ class BaseTrainer:
             - best_model.tar:
                 Like latest_model, but only saved when <is_best> is True.
         """
+        # state_dict 保存到latest_model.tar中
         torch.save(state_dict, (self.checkpoints_dir / "latest_model.tar").as_posix())
+        # 保存当前epoch的模型参数
         torch.save(state_dict["model"], (self.checkpoints_dir / f"model_{str(epoch).zfill(4)}.pth").as_posix())
         if is_best:
             print(f"\t Found best score in {epoch} epoch, saving...")
@@ -121,6 +142,7 @@ class BaseTrainer:
 
         # Use model.cpu() or model.to("cpu") will migrate the model to CPU, at which point we need remigrate model back.
         # No matter tensor.cuda() or tensor.to("cuda"), if tensor in CPU, the tensor will not be migrated to GPU, but the model will.
+        # 无论模型在哪里进行保存，最后都需要将模型移回原始设备
         self.model.to(self.device)
 
     @staticmethod
@@ -131,7 +153,7 @@ class BaseTrainer:
                 if n_gpu is 0, use CPU;
                 if n_gpu > 1, use GPU.
             cudnn_deterministic (bool): repeatability
-                cudnn.benchmark will find algorithms to optimize training. if we need to consider the repeatability of the experiment, set use_cudnn_deterministic to True
+            cudnn.benchmark will find algorithms to optimize training. if we need to consider the repeatability of the experiment, set use_cudnn_deterministic to True
         """
         if n_gpu == 0:
             print("Using CPU in the experiment.")
@@ -147,7 +169,9 @@ class BaseTrainer:
         return device
 
     def _is_best(self, score, find_max=True):
-        """Check if the current model is the best.
+        """
+        Check if the current model is the best.
+        就是找best的呢，最大值/最小值
         """
         if find_max and score >= self.best_score:
             self.best_score = score
@@ -160,7 +184,8 @@ class BaseTrainer:
 
     @staticmethod
     def _transform_pesq_range(pesq_score):
-        """transform PESQ range. From [-0.5 ~ 4.5] to [0 ~ 1].
+        """
+        transform PESQ range. From [-0.5 ~ 4.5] to [0 ~ 1].
         """
         return (pesq_score + 0.5) / 5
 
@@ -169,6 +194,7 @@ class BaseTrainer:
         print(f"This project contains {len(nets)} networks, the number of the parameters: ")
         params_of_all_networks = 0
         for i, net in enumerate(nets, start=1):
+            # 当前网络参数数量
             params_of_network = 0
             for param in net.parameters():
                 params_of_network += param.numel()
@@ -191,16 +217,16 @@ class BaseTrainer:
             timer = ExecutionTime()
 
             self._set_models_to_train_mode()
-            self._train_epoch(epoch)
-
+            self._train_epoch(epoch)  # 这里具体的还没写
+            # 隔checkpoint interval保存checkpoint
             if self.save_checkpoint_interval != 0 and (epoch % self.save_checkpoint_interval == 0):
                 self._save_checkpoint(epoch)
-
+            # 每隔一段interval验证一下
             if self.validation_interval != 0 and epoch % self.validation_interval == 0:
                 print(f"[{timer.duration()} seconds] Training is over. Validation is in progress...")
 
                 self._set_models_to_eval_mode()
-                score = self._validation_epoch(epoch)
+                score = self._validation_epoch(epoch)  # 这里的具体还没写
 
                 if self._is_best(score, find_max=self.find_max):
                     self._save_checkpoint(epoch, is_best=True)

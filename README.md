@@ -156,7 +156,7 @@ The log information generated during the training process will be stored in`conf
         "validation":{
         "interval": 10, // validation interval
          "find_max": true, // When find_max is true, if the calculated metric is the known maximum value, it will cache another copy of the current round of model checkpoint.
-        "custon": {
+        "custom": {
             "visualize_audio_limit": 20, // The interval of visual audio during validation. The reason for setting this parameter is that visual audio is slow
             "visualize_waveform_limit": 20, // The interval of the visualization waveform during validation. The reason for setting this parameter is because the visualization waveform is slow
             "visualize_spectrogram_limit": 20, // Verify the interval of the visualization spectrogram. This parameter is set because the visualization spectrum is slow
