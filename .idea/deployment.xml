@@ -5,7 +5,7 @@
       <paths name="yuhengfeng@172.20.40.204:22 password">
         <serverdata>
           <mappings>
-            <mapping deploy="/home/yuhengfeng/Wave_U_Net" local="$PROJECT_DIR$" />
+            <mapping deploy="/Wave_U_Net" local="$PROJECT_DIR$" />
           </mappings>
         </serverdata>
       </paths>
