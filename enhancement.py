@@ -4,6 +4,7 @@ import os
 
 import librosa
 import torch
+import soundfile as sf
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -32,7 +33,10 @@ assert os.path.exists(output_dir), "Enhanced directory should be exist."
 DataLoader
 """
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
-dataloader = DataLoader(dataset=initialize_config(config["dataset"]), batch_size=1, num_workers=0)
+dataloader = DataLoader(
+    dataset=initialize_config(config["dataset"]),
+    batch_size=1,
+    num_workers=0)
 
 """
 Model
@@ -53,22 +57,25 @@ for mixture, name in tqdm(dataloader):
 
     mixture = mixture.to(device)  # [1, 1, T]
 
-    # The input of the model should be fixed length.
+    # 模型输入是固定长度，需要将mixture文件（验证文件本来长度不限）分成许多块
     if mixture.size(-1) % sample_length != 0:
         padded_length = sample_length - (mixture.size(-1) % sample_length)
         mixture = torch.cat([mixture, torch.zeros(1, 1, padded_length, device=device)], dim=-1)
-
+    # 切分音频块
     assert mixture.size(-1) % sample_length == 0 and mixture.dim() == 3
     mixture_chunks = list(torch.split(mixture, sample_length, dim=-1))
 
     enhanced_chunks = []
     for chunk in mixture_chunks:
+        # detach()从计算图中分离tensor
         enhanced_chunks.append(model(chunk).detach().cpu())
-
+    # 拼接tensor得到full tensor
     enhanced = torch.cat(enhanced_chunks, dim=-1)  # [1, 1, T]
+    # 移除padded填充部分
     enhanced = enhanced if padded_length == 0 else enhanced[:, :, :-padded_length]
-
+    # 转成一维numpy数组
     enhanced = enhanced.reshape(-1).numpy()
 
     output_path = os.path.join(output_dir, f"{name}.wav")
-    librosa.output.write_wav(output_path, enhanced, sr=16000)
+    # librosa.output.write_wav(output_path, enhanced, sr=16000)
+    sf.write(output_path, enhanced, samplerate=16000)
