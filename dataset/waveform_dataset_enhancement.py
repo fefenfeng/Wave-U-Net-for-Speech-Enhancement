@@ -44,6 +44,6 @@ class WaveformDataset(Dataset):
         mixture_path = self.dataset_list[item]
         name = os.path.splitext(os.path.basename(mixture_path))[0]
 
-        mixture, _ = librosa.load(os.path.abspath(os.path.expanduser(mixture_path)), sr=None)
+        mixture, _ = librosa.load(os.path.abspath(os.path.expanduser(mixture_path)), sr=16000)
 
         return mixture.reshape(1, -1), name

@@ -53,20 +53,20 @@ Syntax: `python train.py [-h] -C CONFIG [-R]`
 E.g.:
 
 ```shell script
-python train.py -C config/train/train.json
-# The configuration file used to train the model is "config/train/train.json"
+python train.py -C config/train/train1.json
+# The configuration file used to train the model is "config/train/train1.json"
 # Use all GPUs for training
 
-python train.py -C config/train/train.json -R
-# The configuration file used to train the model is "config/train/train.json"
+python train.py -C config/train/train1.json -R
+# The configuration file used to train the model is "config/train/train1.json"
 # Use all GPUs to continue training from the last saved model checkpoint
 
-CUDA_VISIBLE_DEVICES=1,2 python train.py -C config/train/train.json
-# The configuration file used to train the model is "config/train/train.json"
+CUDA_VISIBLE_DEVICES=1,2 python train.py -C config/train/train1.json
+# The configuration file used to train the model is "config/train/train1.json"
 # Use GPU No.1 and 2 for training
 
-CUDA_VISIBLE_DEVICES=-1 python train.py -C config/train/train.json
-# The configuration file used to train the model is "config/train/train.json"
+CUDA_VISIBLE_DEVICES=-1 python train.py -C config/train/train1.json
+# The configuration file used to train the model is "config/train/train1.json"
 # Use CPU for training
 ```
 
