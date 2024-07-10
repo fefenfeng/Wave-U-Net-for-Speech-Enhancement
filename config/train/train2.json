@@ -1,6 +1,6 @@
 {
     "seed": 0,
-    "description": "First time Train",
+    "description": "Second time train",
     "root_dir": "~/Experiments/Wave-U-Net",
     "cudnn_deterministic": false,
     "trainer": {
@@ -12,9 +12,9 @@
             "interval": 10,
             "find_max": true,
             "custom": {
-                "visualize_audio_limit": 20,
-                "visualize_waveform_limit": 20,
-                "visualize_spectrogram_limit": 20,
+                "visualize_audio_limit": 5,
+                "visualize_waveform_limit": 5,
+                "visualize_spectrogram_limit": 5,
                 "sample_length": 16384
             }
         }
