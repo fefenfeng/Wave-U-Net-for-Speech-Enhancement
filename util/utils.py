@@ -75,11 +75,6 @@ def initialize_config(module_cfg, pass_args=True):
         return getattr(module, module_cfg["main"])
 
 
-
-def compute_PESQ(clean_signal, noisy_signal, sr=16000):
-    return pesq(sr, clean_signal, noisy_signal, "wb")
-
-
 def z_score(m):
     mean = np.mean(m)
     std_var = np.std(m)
@@ -118,6 +113,10 @@ def sample_fixed_length_data_aligned(data_a, data_b, sample_length):
 
 def compute_STOI(clean_signal, noisy_signal, sr=16000):
     return stoi(clean_signal, noisy_signal, sr, extended=False)
+
+
+def compute_PESQ(clean_signal, noisy_signal, sr=16000):
+    return pesq(sr, clean_signal, noisy_signal, "wb")  # WB / NB  PESQ
 
 
 def print_tensor_info(tensor, flag="Tensor"):

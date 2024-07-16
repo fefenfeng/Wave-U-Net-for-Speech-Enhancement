@@ -7,7 +7,7 @@ model4stat = Model()
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-model4stat.load_state_dict(torch.load("/home/yuhengfeng/Experiments/Wave-U-Net/train1/checkpoints/model_0450.pth"))
+model4stat.load_state_dict(torch.load("/home/yuhengfeng/Experiments/Wave-U-Net/train1/checkpoints/model_0500.pth"))
 model4stat.to(device)
 model4stat.eval()
 

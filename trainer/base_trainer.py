@@ -108,6 +108,14 @@ class BaseTrainer:
             - model parameters
         Args:
             is_best(bool): if current checkpoint got the best score, it also will be saved in <root_dir>/checkpoints/best_model.tar.
+
+        Notes:
+            - latest_model.tar:
+                Contains all checkpoint information, including optimizer parameters, model parameters, etc. New checkpoint will overwrite old one.
+            - model_<epoch>.pth:
+                The parameters of the model. Follow-up we can specify epoch to inference.
+            - best_model.tar:
+                Like latest_model, but only saved when <is_best> is True
         """
         print(f"\t Saving {epoch} epoch model checkpoint...")
 
@@ -123,22 +131,14 @@ class BaseTrainer:
         else:
             state_dict["model"] = self.model.cpu().state_dict()
 
-        """
-        Notes:
-            - latest_model.tar:
-                Contains all checkpoint information, including optimizer parameters, model parameters, etc. New checkpoint will overwrite old one.
-            - model_<epoch>.pth: 
-                The parameters of the model. Follow-up we can specify epoch to inference.
-            - best_model.tar:
-                Like latest_model, but only saved when <is_best> is True.
-        """
         # state_dict 保存到latest_model.tar中
         torch.save(state_dict, (self.checkpoints_dir / "latest_model.tar").as_posix())
-        # 保存当前epoch的模型参数
-        torch.save(state_dict["model"], (self.checkpoints_dir / f"model_{str(epoch).zfill(4)}.pth").as_posix())
+        # # 保存当前epoch的模型参数
+        # torch.save(state_dict["model"], (self.checkpoints_dir / f"model_{str(epoch).zfill(4)}.pth").as_posix())
         if is_best:
             print(f"\t Found best score in {epoch} epoch, saving...")
-            torch.save(state_dict, (self.checkpoints_dir / "best_model.tar").as_posix())
+            torch.save(state_dict["model"], (self.checkpoints_dir / "best_model.pth").as_posix())
+            # torch.save(state_dict, (self.checkpoints_dir / "best_model.tar").as_posix())
 
         # Use model.cpu() or model.to("cpu") will migrate the model to CPU, at which point we need remigrate model back.
         # No matter tensor.cuda() or tensor.to("cuda"), if tensor in CPU, the tensor will not be migrated to GPU, but the model will.
@@ -217,10 +217,12 @@ class BaseTrainer:
             timer = ExecutionTime()
 
             self._set_models_to_train_mode()
-            self._train_epoch(epoch)  # 这里具体的还没写
+            self._train_epoch(epoch)
+
             # 隔checkpoint interval保存checkpoint
             if self.save_checkpoint_interval != 0 and (epoch % self.save_checkpoint_interval == 0):
                 self._save_checkpoint(epoch)
+
             # 每隔一段interval验证一下
             if self.validation_interval != 0 and epoch % self.validation_interval == 0:
                 print(f"[{timer.duration()} seconds] Training is over. Validation is in progress...")
